@@ -7,3 +7,5 @@
 *.bil
 *.hdr
 *.html
+*.bam
+*.sam
