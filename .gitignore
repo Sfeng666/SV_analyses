@@ -1,0 +1,9 @@
+# this is where you list the items you do not want to track
+*.tif
+*.pdf
+*.txt
+*.gz
+*.log
+*.bil
+*.hdr
+*.html
