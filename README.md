@@ -1,4 +1,4 @@
-# Perform Structural Variation analyses
+# Perform Structural Variation analyses for pool-seq data
 
 ----
 This program detect CNV and inversions in natural populations of *Drosophila suzukii* from pool-seq WGS data.

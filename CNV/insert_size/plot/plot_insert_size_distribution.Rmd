@@ -32,22 +32,107 @@ data.sample <- 'insert_size_distribution_all_samples.txt'
 ## 1. read insert size distribution as dataframe
 ```{r}
 df <- read.table(data.sample, header=T)
-df$sample <- factor(df$sample, levels = unique(df$sample))
+```
+
+## 2. estimate parameters for CNV analyses from insert size distributions - per sample
+```{r}
+# calculate median from frequency of insert size
 median.insert_size <- df %>%
   group_by(sample) %>%
   summarise(
     median.insert_size = median(rep(insert_size,FR_read_count))
-  ) # calculate median from frequency of insert size
+  ) 
+df.median.insert_size <- as.data.frame(median.insert_size)
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    mad.insert_size = mad(rep(insert_size,FR_read_count))
+  ) 
+df.mad.insert_size <- as.data.frame(mad.insert_size)
+
+# merge data frames of median and MAD to get the data frame that include upper and lower limit of the core distribution 
+df.corelimit <- merge(df.median.insert_size,df.mad.insert_size, by  = "sample") 
+# calculate upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 10*(median absolute deviation)
+df.corelimit <- transform(
+  df.corelimit, lower= median.insert_size - 10*mad.insert_size,
+  upper= median.insert_size + 10*mad.insert_size)
+# merge the upper and lower limits to the main data frame
+df <- merge(df, df.corelimit[, c("sample", "upper", "lower")], by  = "sample")
+
+# calculate standard deviation of the "core" of the distribution from frequency of insert size for each sample library
+# "core" sd is calculated instead of the regular sd to avoid the calculation of nonsensical mean and stdev values caused by artifactual outliers.
+core.sd.insert_size<- df %>%
+  group_by(sample) %>%
+  summarise(
+    sd.insert_size = sd(rep(insert_size,FR_read_count)[rep(insert_size,FR_read_count) > lower & 
+                                                               rep(insert_size,FR_read_count) < upper])
+  ) 
+df.core.sd.insert_size <- as.data.frame(core.sd.insert_size)
+
+# estimate insertSizeDiffCutoff as expected difference in insert size of each (single/merged) library (E(|x1 - x2| = 2*sd/sqrt(pi))
+df.parameters <- transform(
+  df.core.sd.insert_size, insertSizeDiffCutoff= 2*sd.insert_size/sqrt(pi))
+
+# calculate 99th quantile from frequency of insert size for each sample library
 quantile99.insert_size <- df %>%
   group_by(sample) %>%
   summarise(
     quantile.insert_size = quantile(rep(insert_size,FR_read_count), probs = .99, na.rm = FALSE)
-  ) # calculate 99th quantile from frequency of insert size
-# , quantile_lines=TRUE, quantile_fun = function(sample)return(median.insert_size[median.insert_size$sample == sample,]$median.insert_size)
+  )
+df.quantile99.insert_size <- as.data.frame(quantile99.insert_size)
+# estimate insertSizeCutoff as 99th quantile
+df.parameters <- merge(df.parameters, df.quantile99.insert_size, by = "sample")
+df.parameters <- df.parameters[, c("sample", "quantile.insert_size","insertSizeDiffCutoff")]
+colnames(df.parameters)[which(names(df.parameters) == "quantile.insert_size")] <- "insertSizeCutoff"
 ```
 
-## 2. plot insert size distributions of all samples as a Ridgelineplot (joyplot)
+## 3. estimate parameters for CNV analyses from insert size distributions - across sample
 ```{r}
+# calculate median from frequency of insert size
+median.insert_size.merged <- df %>%
+  summarise(
+    median.insert_size = median(rep(insert_size,FR_read_count))
+  )
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size.merged <- df %>%
+  summarise(
+    mad.insert_size = mad(rep(insert_size,FR_read_count))
+  )
+
+# define upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 10*(median absolute deviation)
+# calculate standard deviation of the "core" of the distribution from frequency of insert size across sample libraries
+# "core" sd is calculated instead of the regular sd to avoid the calculation of nonsensical mean and stdev values caused by artifactual outliers.
+core.sd.insert_size.merged <- df %>%
+  summarise(
+    sd.insert_size = sd(rep(insert_size,FR_read_count)[rep(insert_size,FR_read_count) > median.insert_size.merged - 10*mad.insert_size.merged  & 
+                                                               rep(insert_size,FR_read_count) < median.insert_size.merged + 10*mad.insert_size.merged])
+  ) 
+# estimate insertSizeDiffCutoff as expected difference in insert size of across sample libraries (E(|x1 - x2| = 2*sd/sqrt(pi))
+insertSizeDiffCutoff.merged <- 2*core.sd.insert_size.merged/sqrt(pi)
+
+# calculate 99th quantile from frequency of insert size for each sample library
+quantile99.insert_size.merged <- df %>%
+  summarise(
+    quantile.insert_size = quantile(rep(insert_size,FR_read_count), probs = .99, na.rm = FALSE)
+  )
+# estimate insertSizeCutoff as 99th quantile
+insertSizeCutoff.merged <- quantile99.insert_size.merged
+
+# combine the parameters of merged library with those of each sample
+df.parameters[nrow(df.parameters) + 1,] = c("merged", insertSizeCutoff.merged, insertSizeDiffCutoff.merged)  
+
+# output parameters to a table
+write.table(df.parameters, file = "parameters_CNV.txt", quote = F, sep = "\t", row.names = F)
+```
+
+## 4. plot insert size distributions of all samples as a Ridgelineplot (joyplot)
+```{r}
+df$sample <- factor(df$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
 p <- ggplot(df, aes(x = insert_size, y = sample, height = FR_read_count, fill = sample)) +
   geom_density_ridges(stat="identity", scale=3, alpha = .7) +
   theme_ridges(font_size = 12, grid = T) +

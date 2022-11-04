@@ -17,3 +17,10 @@ while IFS= read -r old_name new_name <&3; do
     $path_conda $env_conda $path_tar $old_name $new_name $path_out &
   } 3<&-
 done 3< "$rename_dict"
+
+while IFS= read -r old_name new_name <&3; do
+  {
+    # test
+    echo $old_name $new_name
+  } 3<&-
+done 3< "$rename_dict"
