@@ -26,12 +26,10 @@ tar -xzf $workdir_pac -C $ENVDIR
 . $ENVDIR/bin/activate
 rm $workdir_pac
 
-
 ## 0.3. set local paths
 ### 0.3.1. input files
-in_bam_compressed=$sample\_$contig\.bam.genozip
-in_bam_compressed_stage=$path_in_stage/$in_bam_compressed
 in_bam=$sample\_$contig\.bam
+in_bam_stage=$path_in_stage/$in_bam
 in_sam=$sample\_$contig\.sam
 
 ### 0.3.2. output & intermediate files
@@ -53,8 +51,7 @@ dir_poolDiffCNV=biosoft/poolDiffCNV
 log=log_$job
 
 # 1. copy bam file from staging and unzip zipped bam files
-cp $in_bam_compressed_stage ./
-genounzip -^ $in_bam_compressed
+cp $in_bam_stage ./
 
 # 2. transfer bam to sam
 samtools view -h -o $in_sam $in_bam > $log 2>&1

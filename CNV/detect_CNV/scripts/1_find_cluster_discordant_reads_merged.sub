@@ -4,24 +4,22 @@
 # Files for the below lines MUST all be somewhere within /home/username,
 # and not within /staging/username
 
-initialdir = $(dir_out)/$(sample)
-executable = $(dir_scripts)/1_find_cluster_discordant_reads.sh
-arguments = "$(sample) $(contig) $(conda_pack_squid) $(insert_size_cutoff) $(insertSizeDiffCutoff) $(job)"
+initialdir = $(dir_out)/merged
+executable = $(dir_scripts)/1_find_cluster_discordant_reads_merged.sh
+arguments = "$(contig) $(conda_pack_squid) $(insert_size_cutoff) $(insertSizeDiffCutoff) $(job) $(path_in_stage) $(split) $(large)"
 log = $(job).log
 output = $(job).out
 error = $(job).err
 when_to_transfer_output = ON_EXIT_OR_EVICT
 
 ## Do NOT list the large data files here
-transfer_input_files = $(in_bam_compressed), $(conda_pack_squid), $(software_pack)
+transfer_input_files = $(bed_split), $(conda_pack_squid), $(software_pack)
 should_transfer_files = YES
 
 # # IMPORTANT! Require execute servers that can access /staging
-# Requirements = (Target.HasCHTCStaging == true)
-
 # increase running capacity by allowing jobs to run on older version of CentOS
 # ref: https://chtc.cs.wisc.edu/uw-research-computing/os-transition-htc.html#requesting-a-specific-operating-system
-requirements = (OpSysMajorVer == 7) || (OpSysMajorVer == 8)
+requirements = ((OpSysMajorVer == 7) || (OpSysMajorVer == 8)) && (Target.HasCHTCStaging == true)
 
 # add this flag for jobs expected to run for longer than 72 hours
 # do not use the +LongJob flag unnecessarily or without consulting the Research Computing Facilitators. 

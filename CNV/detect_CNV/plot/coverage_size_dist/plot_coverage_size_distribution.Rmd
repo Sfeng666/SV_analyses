@@ -1,0 +1,528 @@
+---
+title: "plot distribution of coverage, CNV-suggestive insert sizes and counts"
+author: "Siyuan Feng"
+date: "11/17/2022"
+output:
+  html_document:
+    fig_width: 20
+    fig_height: 20
+  pdf_document: default
+---
+
+## 0. setup paths and functions
+```{r setup, include=T, echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+knitr::opts_knit$set(echo = F,
+                      highlight = T,
+                      tidy = T)
+
+## load libraries
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+## paths
+knitr::opts_knit$set(root.dir = '/Users/siyuansmac/bioinfo/project/suzukii_WGS/SV_analyses/CNV/detect_CNV/plot/coverage_size_dist')
+```
+
+# 1. plot distribution of insert coverage along the largest contig NW_023496800.1 (orthologous to a major portion of D. mel 2L) across all samples
+## 1.1 plot distribution of insert coverage by deletions (distant read pairs)
+```{r, echo=FALSE}
+data.contig <- 'NW_023496800.1_distant_cov.bed'
+df <- read.table(data.contig, header=F)
+colnames(df) <- c("contig", "start", "end","coverage")
+# plot distribution
+ggplot(df) + 
+  geom_rect(aes(xmin=start,xmax=end,ymin=0,ymax=coverage)) +
+  labs(x="Genomic position (bp) along NW_023496800.1", y="Coverage") +
+  ggtitle("Figure 1. Distribution of coverage by deletion-suggestive inserts") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(text = element_text(size = 20))
+```
+Input data: leftmost and rightmost coordinates of every distant read pair across samples    
+Applied criteria for deletion-suggestive: insert size larger than 99% percentile of insert size distribution across samples
+
+## 1.2 plot distribution of insert coverage by duplications (everted read pairs)
+```{r, echo=FALSE}
+data.contig.everted <- 'NW_023496800.1_everted_cov.bed'
+df.everted <- read.table(data.contig.everted, header=F)
+colnames(df.everted) <- c("contig", "start", "end","coverage")
+# plot distribution
+ggplot(df.everted) + 
+  geom_rect(aes(xmin=start,xmax=end,ymin=0,ymax=coverage)) +
+  labs(x="Genomic position (bp) along NW_023496800.1", y="Coverage") +
+  ggtitle("Figure 2. Distribution of coverage by duplication-suggestive inserts") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(text = element_text(size = 20))
+```
+Input data: leftmost and rightmost coordinates of every everted read pair across samples;   
+Applied criteria for duplication-suggestive: orientation of a pair of reads is everted
+
+# 2. plot distribution of reads coverage along the largest contig NW_023496800.1 across all samples
+To confirm that patterns in Figure 1 and 2 are not erroneous, I also generated distribution of reads (on each end) coverage (Fig. 3, 4). Since reads are much shorter than whole inserts, the contig is much less covered and have plenty of 0-coverage sites. However, we probably should not set break points in between a pair of reads, as that will raise the problem of how to assign read pairs that intersect with break points.   
+
+## 2.1 plot distribution of reads coverage by deletions (distant read pairs)
+```{r, echo=FALSE}
+# read distribution of reads coverage (distant/deletion) as dataframe
+data.contig.reads <- 'NW_023496800.1_distant_cov_reads.bed'
+df.reads <- read.table(data.contig.reads, header=F)
+colnames(df.reads) <- c("contig", "start", "end","coverage")
+# plot distribution
+ggplot(df.reads) + 
+  geom_rect(aes(xmin=start,xmax=end,ymin=0,ymax=coverage)) +
+  labs(x="Genomic position (bp) along NW_023496800.1", y="Coverage") +
+  ggtitle("Figure 3. Distribution of coverage by deletion-suggestive reads") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(text = element_text(size = 20))
+```
+Input data: start and and coordinates of reads on each end of distant read pairs across samples   
+Applied criteria for deletion-suggestive: insert size larger than 99% percentile of insert size distribution across samples
+
+## 2.2 plot distribution of reads coverage by duplications (everted read pairs)
+```{r, echo=FALSE}
+# read distribution of read coverage (everted/duplication) as dataframe
+data.contig.everted.reads <- 'NW_023496800.1_everted_cov_reads.bed'
+df.everted.reads <- read.table(data.contig.everted.reads, header=F)
+colnames(df.everted.reads) <- c("contig", "start", "end","coverage")
+# plot distribution
+ggplot(df.everted.reads) + 
+  geom_rect(aes(xmin=start,xmax=end,ymin=0,ymax=coverage)) + 
+  labs(x="Genomic position (bp) along NW_023496800.1", y="Coverage") +
+  ggtitle("Figure 4. Distribution of coverage by duplication-suggestive reads") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(text = element_text(size = 20))
+
+```
+Input data: start and and coordinates of reads on each end of everted read pairs across samples   
+
+# 3. plot whole-genome distribution of insert sizes within each sample
+Another investigation following insert coverage is the whole-genome distribution of insert sizes for CNV-suggestive read pairs (Fig. 5, 6). 
+```{r, echo=FALSE}
+# define a function to plot distribution
+plot.dist <- function(dt, title, xaxis, N){
+# read raw length profile
+df <- read.table(dt, header=F)
+colnames(df) <- c("sample", "size")
+
+# calculate median from frequency of insert size
+median.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median.insert_size = median(size)
+  ) 
+df.median.insert_size <- as.data.frame(median.insert_size)
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    mad.insert_size = mad(size)
+  ) 
+df.mad.insert_size <- as.data.frame(mad.insert_size)
+
+# merge data frames of median and MAD to get the data frame that include upper and lower limit of the core distribution 
+df.corelimit <- merge(df.median.insert_size,df.mad.insert_size, by  = "sample") 
+# calculate upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 2*(median absolute deviation)
+df.corelimit <- transform(
+  df.corelimit, lower= median.insert_size - N*mad.insert_size,
+  upper= median.insert_size + N*mad.insert_size)
+
+# calculate 99th quantile from frequency of insert size for each sample library
+quantile99.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    quantile.insert_size = quantile(size, probs = .99, na.rm = FALSE)
+  )
+df.quantile99.insert_size <- as.data.frame(quantile99.insert_size)
+
+# # calculate 95th quantile from frequency of insert size for each sample library
+# quantile95.insert_size <- df %>%
+#   group_by(sample) %>%
+#   summarise(
+#     quantile.insert_size = quantile(size, probs = .95, na.rm = FALSE)
+#   )
+# df.quantile95.insert_size <- as.data.frame(quantile95.insert_size)
+
+# plot distribution
+df$sample <- factor(df$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.median.insert_size$sample <- factor(df.median.insert_size$sample, levels = unique(df.median.insert_size$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df, aes(x = size, y = sample, fill = sample)) +
+  geom_density_ridges(scale=2, alpha = .7) + 
+  scale_x_continuous(limits = c(NA, max(df.corelimit$upper))) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 32)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.median.insert_size, inherit.aes = F, aes(
+  x = median.insert_size,
+  y = as.numeric(sample),
+  xend = median.insert_size,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 0.5)
+}
+```
+## 3.1. plot whole-genome distribution of insert sizes of deletion-suggestive read pairs
+```{r, echo=FALSE}
+dt <- 'len_distribution_distant_inserts.txt'
+title <- "Figure 5. Distribution of insert sizes (deletion-suggestive read pairs)"
+xaxis <- "Insert size (bp)"
+N <- 2
+plot.dist(dt, title, xaxis, N)
+```
+Vertical black line refers to median    
+Input data: insert sizes of distant read pairs within each sample
+
+## 3.2. plot whole-genome distribution of insert sizes of duplication-suggestive read pairs
+```{r}
+dt <- 'len_distribution_everted_inserts.txt'
+title <- "Figure 6. Distribution of insert sizes (duplication-suggestive read pairs)"
+xaxis <- "Insert size (bp)"
+N <- 0
+plot.dist(dt, title, xaxis, N)
+```
+input data: insert sizes of everted read pairs within each sample   
+
+# 4. plot whole-genome distribution of cluster sizes within each sample
+```{r, echo=FALSE}
+# define a function to plot distribution
+plot.dist.cluster <- function(dt, title, xaxis, N){
+# read raw length profile
+df <- read.table(dt, header=F)
+colnames(df) <- c("sample", "size", "count")
+
+# generate unique size distribution from count data
+df <- df %>%
+  group_by(sample) %>%
+  summarise(
+  size = rep(size,count)
+  )
+df <- as.data.frame(df)
+
+# calculate median from frequency of insert size
+median.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median.insert_size = median(size)
+  ) 
+df.median.insert_size <- as.data.frame(median.insert_size)
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    mad.insert_size = mad(size)
+  ) 
+df.mad.insert_size <- as.data.frame(mad.insert_size)
+
+# merge data frames of median and MAD to get the data frame that include upper and lower limit of the core distribution 
+df.corelimit <- merge(df.median.insert_size,df.mad.insert_size, by  = "sample") 
+# calculate upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 2*(median absolute deviation)
+df.corelimit <- transform(
+  df.corelimit, lower= median.insert_size - N*mad.insert_size,
+  upper= median.insert_size + N*mad.insert_size)
+
+# calculate 99th quantile from frequency of insert size for each sample library
+quantile99.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    quantile.insert_size = quantile(size, probs = .99, na.rm = FALSE)
+  )
+df.quantile99.insert_size <- as.data.frame(quantile99.insert_size)
+
+# # calculate 95th quantile from frequency of insert size for each sample library
+# quantile95.insert_size <- df %>%
+#   group_by(sample) %>%
+#   summarise(
+#     quantile.insert_size = quantile(size, probs = .95, na.rm = FALSE)
+#   )
+# df.quantile95.insert_size <- as.data.frame(quantile95.insert_size)
+
+# plot distribution
+df$sample <- factor(df$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.median.insert_size$sample <- factor(df.median.insert_size$sample, levels = unique(df.median.insert_size$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df, aes(x = size, y = sample, fill = sample)) +
+  geom_density_ridges(scale=2, alpha = .7) + 
+  scale_x_continuous(limits = c(NA, max(df.corelimit$upper))) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 32)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.median.insert_size, inherit.aes = F, aes(
+  x = median.insert_size,
+  y = as.numeric(sample),
+  xend = median.insert_size,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 0.5)
+}
+```
+## 4.1. plot whole-genome distribution of cluster sizes of deletion-suggestive clusters
+```{r, echo=FALSE}
+dt <- 'len_distribution_distant_clusters.txt'
+title <- "Figure 7. Distribution of cluster sizes (deletion-suggestive clusters)"
+xaxis <- "Insert size (bp)"
+N <- 2
+plot.dist.cluster(dt, title, xaxis, N)
+
+df <- read.table(dt, header=F)
+colnames(df) <- c("sample", "size", "count")
+
+# calculate median from frequency of insert size
+median.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median.insert_size = median(size)
+  ) 
+df.median.insert_size <- as.data.frame(median.insert_size)
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    mad.insert_size = mad(size)
+  ) 
+df.mad.insert_size <- as.data.frame(mad.insert_size)
+# merge data frames of median and MAD to get the data frame that include upper and lower limit of the core distribution 
+df.corelimit <- merge(df.median.insert_size,df.mad.insert_size, by  = "sample") 
+# calculate upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 2*(median absolute deviation)
+df.corelimit <- transform(
+  df.corelimit, lower= median.insert_size - N*mad.insert_size,
+  upper= median.insert_size + N*mad.insert_size)
+
+# calculate 99th quantile from frequency of insert size for each sample library
+quantile99.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    quantile.insert_size = quantile(size, probs = .99, na.rm = FALSE)
+  )
+df.quantile99.insert_size <- as.data.frame(quantile99.insert_size)
+```
+Input data: minimal gap size (end of the left read to start of the right read) of all read pairs in each deletion cluster   
+applied criteria to identify a deletion cluster:    
+1. abs(left end of read pair 1 - left end of read pair 2) + abs(right start of read pair 1- right start of read pair 2) < 2*expected difference in insert sizes;    
+2. difference between insert sizes of two read pairs is smaller than the expected difference in insert sizes;    
+3. 75% of pairwise comparisons between read pairs of an assumed cluster meets criteria 1 and 2;   
+4. more than two read pairs support a cluster;    
+5. deletion size larger than 50 bp.   
+
+## 4.2. plot whole-genome distribution of cluster sizes of duplication-suggestive clusters
+```{r, echo=FALSE}
+dt <- 'len_distribution_everted_clusters.txt'
+title <- "Figure 8. Distribution of cluster sizes (duplications-suggestive clusters)"
+xaxis <- "Insert size (bp)"
+N <- 2
+plot.dist.cluster(dt, title, xaxis, N)
+
+df <- read.table(dt, header=F)
+colnames(df) <- c("sample", "size", "count")
+
+# calculate median from frequency of insert size
+median.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median.insert_size = median(size)
+  ) 
+df.median.insert_size <- as.data.frame(median.insert_size)
+
+# calculate median absolute deviation (MAD) from frequency of insert size
+mad.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    mad.insert_size = mad(size)
+  ) 
+df.mad.insert_size <- as.data.frame(mad.insert_size)
+# merge data frames of median and MAD to get the data frame that include upper and lower limit of the core distribution 
+df.corelimit <- merge(df.median.insert_size,df.mad.insert_size, by  = "sample") 
+# calculate upper and lower limits of the core distribution
+# the core distribution is defined as median +/- 2*(median absolute deviation)
+df.corelimit <- transform(
+  df.corelimit, lower= median.insert_size - N*mad.insert_size,
+  upper= median.insert_size + N*mad.insert_size)
+
+# calculate 99th quantile from frequency of insert size for each sample library
+quantile99.insert_size <- df %>%
+  group_by(sample) %>%
+  summarise(
+    quantile.insert_size = quantile(size, probs = .99, na.rm = FALSE)
+  )
+df.quantile99.insert_size <- as.data.frame(quantile99.insert_size)
+```
+Input data: minimal gap size (end of the left read to start of the right read) of all read pairs in each deletion cluster   
+Applied criteria to identify a deletion cluster:    
+1. abs(left start of read pair 1- left start of read pair 2) < 2 * 99% quantile of insert sizes    
+2. abs(right end of read pair 1 - right end of read pair 2) < 2 * 99% quantile of insert sizes    
+
+# 5. plot frequency (count) of the number of inserts that support CNVs
+
+## 5.1. plot frequency of the number of inserts that support deletions
+```{r, echo=FALSE}
+title <- "Figure 9. Distribution of the number of read pairs for deletions"
+xaxis <- "Number of read pairs"
+N <- 0
+
+# read count data for merged library
+dt.1 <- 'ct_distribution_distant_clusters_merged.txt'
+df.1 <- read.table(dt.1, header=F)
+colnames(df.1) <- c("count")
+df.1$sample <- rep("merged", dim(df.1)[1])
+
+# read count data for individual sample
+dt.2 <- 'len_distribution_distant_clusters.txt'
+df.2 <- read.table(dt.2, header=F, colClasses = c(V2="NULL"))
+colnames(df.2) <- c("sample", "count")
+
+# bind count data from merged library with individual samples
+df <- rbind(df.1, df.2)
+
+# calculate frequency of inserts count for each sample + merged library
+freq.count <- df %>%
+  group_by(sample) %>%
+  count(count)
+df.freq.count <- as.data.frame(freq.count)
+
+# calculate quantiles from frequency of insert size
+quantile.count <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median = quantile(count, probs = .5, na.rm = FALSE),
+    thrid = quantile(count, probs = .75, na.rm = FALSE),
+    top_5 = quantile(count, probs = .95, na.rm = FALSE)
+  ) 
+df.quantile.count <- as.data.frame(quantile.count)
+
+# plot distribution
+df.freq.count$sample <- factor(df.freq.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.quantile.count$sample <- factor(df.quantile.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df.freq.count, aes(x = count, y = sample, height = n, fill = sample)) +
+  geom_density_ridges(
+          stat = "identity",
+          scale = 1, alpha = 0.5
+  )  +
+  # scale_fill_viridis_d(name = "Quartiles") +
+  scale_x_continuous(limits = c(NA, max(df.quantile.count[,-1])), breaks = seq(2, max(df.quantile.count[,-1]), by = 2)) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 31)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = median,
+  y = as.numeric(sample),
+  xend = median,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F,aes(
+  x = thrid,
+  y = as.numeric(sample),
+  xend = thrid,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = top_5,
+  y = as.numeric(sample),
+  xend = top_5,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1)
+```
+Vertical black lines refer to median, 75 percentile and 99 percentile of insert number. Same in Figure 10.        
+Input data: the number of inserts that support each deletion   
+
+## 5.2. plot frequency of the number of inserts that support duplications
+```{r, echo=FALSE}
+title <- "Figure 10. Distribution of the number of read pairs for duplications"
+xaxis <- "Number of read pairs"
+
+# read count data for merged library
+dt.1 <- 'ct_distribution_everted_clusters_merged.txt'
+df.1 <- read.table(dt.1, header=F)
+colnames(df.1) <- c("count")
+df.1$sample <- rep("merged", dim(df.1)[1])
+
+# read count data for individual sample
+dt.2 <- 'len_distribution_everted_clusters.txt'
+df.2 <- read.table(dt.2, header=F, colClasses = c(V2="NULL"))
+colnames(df.2) <- c("sample", "count")
+
+# bind count data from merged library with individual samples
+df <- rbind(df.1, df.2)
+
+# calculate frequency of inserts count for each sample + merged library
+freq.count <- df %>%
+  group_by(sample) %>%
+  count(count)
+df.freq.count <- as.data.frame(freq.count)
+
+# calculate quantiles from frequency of insert size
+quantile.count <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median = quantile(count, probs = .5, na.rm = FALSE),
+    thrid = quantile(count, probs = .75, na.rm = FALSE),
+    top_5 = quantile(count, probs = .95, na.rm = FALSE)
+  ) 
+df.quantile.count <- as.data.frame(quantile.count)
+
+# plot distribution
+df.freq.count$sample <- factor(df.freq.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.quantile.count$sample <- factor(df.quantile.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df.freq.count, aes(x = count, y = sample, height = n, fill = sample)) +
+  geom_density_ridges(
+          stat = "identity",
+          scale = 2, alpha = 0.5
+  )  +
+  # scale_fill_viridis_d(name = "Quartiles") +
+  scale_x_continuous(limits = c(NA, max(df.quantile.count[,-1])), breaks = seq(2, max(df.quantile.count[,-1]), by = 2)) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 31)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = median,
+  y = as.numeric(sample),
+  xend = median,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F,aes(
+  x = thrid,
+  y = as.numeric(sample),
+  xend = thrid,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = top_5,
+  y = as.numeric(sample),
+  xend = top_5,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1)
+```
+Input data: the number of inserts that support each duplication   

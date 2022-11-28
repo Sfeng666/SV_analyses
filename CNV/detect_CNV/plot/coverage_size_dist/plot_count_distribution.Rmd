@@ -1,0 +1,177 @@
+---
+title: "plot distribution of insert count of CNVs"
+author: "Siyuan Feng"
+date: "11/17/2022"
+output:
+  html_document:
+    fig_width: 20
+    fig_height: 20
+  pdf_document: default
+---
+
+## 0. setup paths and functions
+```{r setup, include=T}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+knitr::opts_knit$set(echo = F,
+                      highlight = T,
+                      tidy = T)
+
+## load libraries
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+## paths
+knitr::opts_knit$set(root.dir = '/Users/siyuansmac/bioinfo/project/suzukii_WGS/SV_analyses/CNV/detect_CNV/plot/coverage_size_dist')
+```
+# 6. plot distribution of the number of inserts that support CNVs (count)
+
+```{r, echo=FALSE}
+title <- "Figure 9. Distribution of the number of read pairs for deletions"
+xaxis <- "Number of read pairs"
+N <- 0
+
+# read count data for merged library
+dt.1 <- 'ct_distribution_distant_clusters_merged.txt'
+df.1 <- read.table(dt.1, header=F)
+colnames(df.1) <- c("count")
+df.1$sample <- rep("merged", dim(df.1)[1])
+
+# read count data for individual sample
+dt.2 <- 'len_distribution_distant_clusters.txt'
+df.2 <- read.table(dt.2, header=F, colClasses = c(V2="NULL"))
+colnames(df.2) <- c("sample", "count")
+
+# bind count data from merged library with individual samples
+df <- rbind(df.1, df.2)
+
+# calculate frequency of inserts count for each sample + merged library
+freq.count <- df %>%
+  group_by(sample) %>%
+  count(count)
+df.freq.count <- as.data.frame(freq.count)
+
+# calculate quantiles from frequency of insert size
+quantile.count <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median = quantile(count, probs = .5, na.rm = FALSE),
+    thrid = quantile(count, probs = .75, na.rm = FALSE),
+    top_5 = quantile(count, probs = .95, na.rm = FALSE)
+  ) 
+df.quantile.count <- as.data.frame(quantile.count)
+
+# plot distribution
+df.freq.count$sample <- factor(df.freq.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.quantile.count$sample <- factor(df.quantile.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df.freq.count, aes(x = count, y = sample, height = n, fill = sample)) +
+  geom_density_ridges(
+          stat = "identity",
+          scale = 1, alpha = 0.5
+  )  +
+  # scale_fill_viridis_d(name = "Quartiles") +
+  scale_x_continuous(limits = c(NA, max(df.quantile.count[,-1])), breaks = seq(2, max(df.quantile.count[,-1]), by = 2)) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 31)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = median,
+  y = as.numeric(sample),
+  xend = median,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F,aes(
+  x = thrid,
+  y = as.numeric(sample),
+  xend = thrid,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = top_5,
+  y = as.numeric(sample),
+  xend = top_5,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1)
+```
+
+## 6.2. plot distribution of the number of inserts that support duplications (count)
+```{r, echo=FALSE}
+title <- "Figure 10. Distribution of the number of read pairs for duplications"
+xaxis <- "Number of read pairs"
+
+# read count data for merged library
+dt.1 <- 'ct_distribution_everted_clusters_merged.txt'
+df.1 <- read.table(dt.1, header=F)
+colnames(df.1) <- c("count")
+df.1$sample <- rep("merged", dim(df.1)[1])
+
+# read count data for individual sample
+dt.2 <- 'len_distribution_everted_clusters.txt'
+df.2 <- read.table(dt.2, header=F, colClasses = c(V2="NULL"))
+colnames(df.2) <- c("sample", "count")
+
+# bind count data from merged library with individual samples
+df <- rbind(df.1, df.2)
+
+# calculate frequency of inserts count for each sample + merged library
+freq.count <- df %>%
+  group_by(sample) %>%
+  count(count)
+df.freq.count <- as.data.frame(freq.count)
+
+# calculate quantiles from frequency of insert size
+quantile.count <- df %>%
+  group_by(sample) %>%
+  summarise(
+    median = quantile(count, probs = .5, na.rm = FALSE),
+    thrid = quantile(count, probs = .75, na.rm = FALSE),
+    top_5 = quantile(count, probs = .95, na.rm = FALSE)
+    # top_1 = quantile(count, probs = .99, na.rm = FALSE)
+  ) 
+df.quantile.count <- as.data.frame(quantile.count)
+
+# plot distribution
+df.freq.count$sample <- factor(df.freq.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+df.quantile.count$sample <- factor(df.quantile.count$sample, levels = unique(df$sample)) # factorize the "sample" column to maintain the original order in ggplots
+
+p <- ggplot(df.freq.count, aes(x = count, y = sample, height = n, fill = sample)) +
+  geom_density_ridges(
+          stat = "identity",
+          scale = 3, alpha = 0.5
+  )  +
+  # scale_fill_viridis_d(name = "Quartiles") +
+  scale_x_continuous(limits = c(NA, max(df.quantile.count[,-1])), breaks = seq(min(df.quantile.count[,-1]), max(df.quantile.count[,-1]), by = 2)) + # only show core distributions
+  theme_ridges(font_size = 17, grid = T) +
+  theme(legend.position = "none") +
+  expand_limits(y = c(1, 31)) + # increase the upper limit of the graph border
+  labs(x=xaxis, y="Sample") +
+  ggtitle(title) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 4)) +
+  theme(axis.title.x = element_text(hjust = 0.5)) +
+  theme(axis.title.y.left = element_text(hjust = 0.5)) +
+  theme(plot.margin = unit(c(1,1,1,1), "cm"))
+p + geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = median,
+  y = as.numeric(sample),
+  xend = median,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F,aes(
+  x = thrid,
+  y = as.numeric(sample),
+  xend = thrid,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1) +
+  geom_segment(data = df.quantile.count, inherit.aes = F, aes(
+  x = top_5,
+  y = as.numeric(sample),
+  xend = top_5,
+  yend = as.numeric(sample) + 1), color = 'black', alpha = 1)
+```

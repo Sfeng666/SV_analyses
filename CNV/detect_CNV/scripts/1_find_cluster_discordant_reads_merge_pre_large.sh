@@ -51,25 +51,22 @@ bam_contig_merged=$path_out_sp/merged_$contig\.bam
 if ! [ -f $bam_contig_merged ];
 then
     samtools merge $bam_contig_merged $bam_contig_allsample
-    rm $bam_contig_allsample
+    ## remove contig bam files of each sample only if a compressed version has been generated
+    while read -r name_sample name_sample_new; do
+        name_sample=$(echo $name_sample | sed 's/\r$//') # get rid of weird delimiters from operation system
+        name_sample_new=$(echo $name_sample_new | sed 's/\r$//') # get rid of weird delimiters from operation system
+        bam_contig=$path_out/$name_sample_new/$name_sample_new\_$contig\.bam
+        bam_contig_genozip=$bam_contig\.genozip
+        bam_contig_tar=$path_in_stage/$(basename $bam_contig)
+        if [ -f $bam_contig_genozip ] || [ -f $bam_contig_tar ];  
+        then
+            rm $bam_contig
+        fi
+    done < $rename_dict
 fi
 
-# 4. further compress bam file by genozip
-bam_contig_merged_genozip=$bam_contig_merged\.genozip
-bam_contig_merged_genozip_tar=$path_in_stage/$(basename $bam_contig_merged_genozip)
-if ! [ -f $bam_contig_merged_genozip ] && ! [ -f $bam_contig_merged_genozip_tar ];
-then
-    genozip --no-test -^ --vblock 150 $bam_contig_merged >> $log 2>&1
-    rm $bam_contig_merged
-    # 5. mv the large zipped file to staging for uploading
-    mv $bam_contig_merged_genozip $bam_contig_merged_genozip_tar >> $log 2>&1
-fi
-if [ -f $bam_contig_merged ];
-then
-    rm $bam_contig_merged
-fi
-
-# 5. mv the large zipped file to staging for uploading
-mv $bam_contig_merged_genozip $bam_contig_merged_genozip_tar >> $log 2>&1
+# 4. mv the large zipped file to staging for uploading
+bam_contig_merged_tar=$path_in_stage/$(basename $bam_contig_merged)
+mv $bam_contig_merged $bam_contig_merged_tar >> $log 2>&1
 
 echo -e "# Whole job ends at " `date +%F'  '%H:%M` "\n" >> $log

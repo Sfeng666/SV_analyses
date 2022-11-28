@@ -12,6 +12,7 @@ name_sample=$4
 name_sample_new=$5
 path_out_sp=$6
 contig=$7
+path_in_stage=$8
 
 log=$path_out_sp/log_1_pre_$contig
 
@@ -45,7 +46,16 @@ fi
 # 3. further compress bam file by genozip
 if ! [ -f $bam_contig\.genozip ];
 then
-    genozip --no-test $bam_contig
+    genozip --no-test $bam_contig >> $log 2>&1
+    rm $bam_contig
+    # ## remove bam contig file only if a compressed merged bam file has been generated
+    # bam_contig_merged=$path_out_sp/../merged/merged_$contig\.bam
+    # bam_contig_merged_genozip=$bam_contig_merged\.genozip
+    # bam_contig_merged_tar=$path_in_stage/$(basename $bam_contig_merged)
+    # if [ -f $bam_contig_merged_genozip] || [ -f $bam_contig_merged_tar];
+    # then
+    #     rm $bam_contig
+    # fi
 fi
 
 echo -e "# Whole job ends at " `date +%F'  '%H:%M` "\n" >> $log

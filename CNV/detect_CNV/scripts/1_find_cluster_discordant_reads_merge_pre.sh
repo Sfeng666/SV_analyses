@@ -12,6 +12,7 @@ rename_dict=$4
 path_out=$5
 path_out_sp=$6
 contig=$7
+path_in_stage=$8
 
 log=$path_out_sp/log_1_pre_$contig
 # 0.3. configure the conda enviroment
@@ -50,7 +51,18 @@ bam_contig_merged=$path_out_sp/merged_$contig\.bam
 if ! [ -f $bam_contig_merged ];
 then
     samtools merge $bam_contig_merged $bam_contig_allsample
-    rm $bam_contig_allsample
+    ## remove contig bam files of each sample only if a compressed version has been generated
+    while read -r name_sample name_sample_new; do
+        name_sample=$(echo $name_sample | sed 's/\r$//') # get rid of weird delimiters from operation system
+        name_sample_new=$(echo $name_sample_new | sed 's/\r$//') # get rid of weird delimiters from operation system
+        bam_contig=$path_out/$name_sample_new/$name_sample_new\_$contig\.bam
+        bam_contig_genozip=$bam_contig\.genozip
+        bam_contig_tar=$path_in_stage/$(basename $bam_contig)
+        if [ -f $bam_contig_genozip ] || [ -f $bam_contig_tar ];  
+        then
+            rm $bam_contig
+        fi
+    done < $rename_dict
 fi
 
 # 4. further compress bam file by genozip

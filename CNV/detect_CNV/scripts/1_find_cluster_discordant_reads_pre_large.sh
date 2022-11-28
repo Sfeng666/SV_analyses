@@ -43,14 +43,16 @@ then
     samtools view -b $in_bam_rename_sort $contig > $bam_contig
 fi
 
-# 3. further compress bam file by genozip
-if ! [ -f $bam_contig\.genozip ];
-then
-    genozip --no-test $bam_contig
-fi
-
-# 5. mv the large zipped file to staging for uploading
-$bam_contig_genozip=$bam_contig\.genozip
-mv $bam_contig_genozip $path_in_stage/$(basename $bam_contig_genozip)
+# 3. mv the large zipped file to staging for uploading
+cp $bam_contig $path_in_stage/$(basename $bam_contig)
+rm $bam_contig
+# ## remove bam contig file only if a compressed merged bam file has been generated
+# bam_contig_merged=$path_out_sp/../merged/merged_$contig\.bam
+# bam_contig_merged_genozip=$bam_contig_merged\.genozip
+# bam_contig_merged_tar=$path_in_stage/$(basename $bam_contig_merged)
+# if [ -f $bam_contig_merged_genozip] || [ -f $bam_contig_merged_tar];
+# then
+#     rm $bam_contig
+# fi
 
 echo -e "# Whole job ends at " `date +%F'  '%H:%M` "\n" >> $log
