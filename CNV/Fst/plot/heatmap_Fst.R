@@ -4,29 +4,28 @@ library(gplots)
 Args <- commandArgs(T)
 wd <- Args[1]
 dd <- Args[2]
-para <- Args[3]
+cnv <- Args[3]
 
-# # # parameters for test only
-# wd <- "/Users/siyuansmac/bioinfo/project/suzukii_WGS/genetic_diff/Fst/plot_efs"
-# dd <- "/Users/siyuansmac/bioinfo/project/suzukii_WGS/genetic_diff/Fst/ungapped_window_efs"
-# para <- "winheter_100_mincov_12_mincount_1"
-# chr <- "auto"
+# # parameters for test only
+wd <- "/Users/siyuansmac/bioinfo/project/suzukii_WGS/SV_analyses/CNV/Fst/plot"
+dd <- "/Users/siyuansmac/bioinfo/project/suzukii_WGS/SV_analyses/CNV/Fst/results"
+cnv <- "del"
 
 # def a function to plot heatmap for Fst
-heatmap_Fst <- function(wd, dd, para, chr) {
+heatmap_Fst <- function(wd, dd, cnv, chr) {
   
 ## read the table including Fst
 setwd(wd)
-df <- read.table(file=paste(dd, "/", para, "/", "Fst_", chr, ".txt", sep = ""), 
+df <- read.table(file=paste(dd, "/", "Fst_", cnv, "_",  chr, ".txt", sep = ""), 
                  header=T, row.names = 1, sep="\t", check.names=FALSE)
 df_color <- data.frame(sample=colnames(df), 
-                       range=factor(c("FR-Run", "European", "European", "Chinese",
-                                      "Chinese", "European", "European", "European",
-                                      "European", "Japanese", "Japanese", "Chinese", 
-                                      "American", "American", "Chinese", "American", 
+                       range=factor(c("American", "American", "American", "American",
                                       "American", "American", "US-Haw", "American",
-                                      "BR-Pal", "European", "American", "American",
-                                      "Japanese", "European", "Japanese", "European", "European"),
+                                      "American", "BR-Pal", "European", "European", 
+                                      "FR-Run", "European", "European", "European", 
+                                      "European", "European", "European", "European",
+                                      "European", "Chinese", "Chinese", "Chinese",
+                                      "Chinese", "Japanese", "Japanese", "Japanese", "Japanese"),
                                     levels = c("US-Haw", "American", "BR-Pal", "FR-Run", "European", "Chinese", "Japanese")))
 df_color <- df_color[order(df_color$sample),]
 df_color <- df_color[order(df_color$range),]
@@ -41,7 +40,7 @@ vc_spcolor <- vc_color[df_color$range]
 df_color$color <- vc_spcolor
 
 ## plot the heatmap without the dendrogram
-pdf(file=paste(wd, '/', "Fst_", chr, "_", para, ".pdf", sep = ""))
+pdf(file=paste(wd, '/', "Fst_", cnv, "_",  chr, ".pdf", sep = ""))
 par(ps = 12, cex = 1, cex.main = 1)
 heatmap.2(mt, margins=c(8, 8), 
           ColSideColors = df_color$color,
@@ -53,7 +52,7 @@ legend(-0.06, 0.82,legend=names(vc_color),title="Range", cex = 1,
 dev.off()
 
 ## plot the heatmap and dendrogram based on hierarchical clustering of distances as Fst
-pdf(file=paste(wd, '/', "Fst_", chr, "_", para, "_hclust_byFst.pdf", sep = ""))
+pdf(file=paste(wd, '/', "Fst_", cnv, "_",  chr, "_hclust_byFst.pdf", sep = ""))
 par(ps = 12, cex = 1, cex.main = 1)
 heatmap.2(mt, margins=c(8, 8), 
           ColSideColors = df_color$color,
@@ -65,7 +64,7 @@ legend(-0.06, 0.82,legend=names(vc_color),title="Range", cex = 1,
 dev.off()
 
 ## plot the heatmap and dendrogram based on hierarchical clustering of distances calculated from Fst
-pdf(file=paste(wd, '/', "Fst_", chr, "_", para, "_hclust.pdf", sep = ""))
+pdf(file=paste(wd, '/', "Fst_", cnv, "_",  chr, "_hclust.pdf", sep = ""))
 par(ps = 12, cex = 1, cex.main = 1)
 heatmap.2(mt, margins=c(8, 8), 
           ColSideColors = df_color$color, 
@@ -78,5 +77,5 @@ dev.off()
 }
 
 # plot
-heatmap_Fst(wd, dd, para, "auto")
-heatmap_Fst(wd, dd, para, "X")
+heatmap_Fst(wd, dd, cnv, "auto")
+heatmap_Fst(wd, dd, cnv, "X")
