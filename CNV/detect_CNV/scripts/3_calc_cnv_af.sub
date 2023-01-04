@@ -1,0 +1,51 @@
+# submit a job node to calculate allele frequency of CNVs from each contig of each samoke
+
+### this is a single job that only use small data
+# Files for the below lines MUST all be somewhere within /home/username,
+# and not within /staging/username
+
+initialdir = $(dir_out)/global_CNV_AF
+executable = $(dir_scripts)/3_calc_cnv_af.sh
+arguments = "$(contig) $(sample) $(conda_pack_squid) $(path_in_stage) $(job)"
+log = $(job).log
+output = $(job).out
+error = $(job).err
+when_to_transfer_output = ON_EXIT_OR_EVICT
+
+## Do NOT list the large data files here
+transfer_input_files = $(bed_del_sp_contig), $(bed_dup_sp_contig), $(conda_pack_squid)
+should_transfer_files = YES
+
+# # IMPORTANT! Require execute servers that can access /staging
+# increase running capacity by allowing jobs to run on older version of CentOS
+# ref: https://chtc.cs.wisc.edu/uw-research-computing/os-transition-htc.html#requesting-a-specific-operating-system
+requirements = ((OpSysMajorVer == 7) || (OpSysMajorVer == 8)) && (Target.HasCHTCStaging == true)
+
+# add this flag for jobs expected to run for longer than 72 hours
+# do not use the +LongJob flag unnecessarily or without consulting the Research Computing Facilitators. 
+# When this flag is applied in other cases, it can make a job take longer to start 
+# +LongJob = true
+
+# increase machine capacity for short jobs
++is_resumable = true
+
+# Make sure to still include lines like "request_memory", "request_disk", "request_cpus", etc. 
++WantFlocking = false
++WantGlideIn = false
+request_cpus = $(request_cpus)
+request_disk = $(request_disk)
+# request_memory = $(request_memory)
+queue
+
+# # codes to automatically increase memory and disk as suggested by CHTC but never worked
+# periodic_release = (JobStatus == 5) && (NumJobStarts < 5) && (HoldReasonCode == 21)
+# request_memory = ifthenelse(MemoryUsage > RequestMemory, MAX({$(request_memory),MemoryUsage * 4/3}), $(request_memory))
+# request_disk = ifthenelse(DiskUsage > RequestDisk, MAX({$(request_disk),DiskUsage * 4/3}), $(request_disk))
+
+# codes to automatically increase memory from online resrouce
+periodic_release = (JobStatus == 5) && (NumJobStarts < 10) && ((HoldReasonCode== 34) || (HoldReasonSubCode == 102))
+request_memory = ifthenelse(MemoryUsage =!= undefined, MAX({$(request_memory),MemoryUsage *4/3}), $(request_memory))
+# request_memory = ifthenelse(MemoryUsage > RequestMemory, MAX({$(request_memory),MemoryUsage * 4/3}), $(request_memory))
+# request_disk = ifthenelse(DiskUsage > RequestDisk, MAX({$(request_disk),DiskUsage * 4/3}), $(request_disk))
+
+queue

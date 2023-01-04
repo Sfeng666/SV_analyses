@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 # script to perform discordant read-pair detection and clustering (step 1) within each sample/across all samples 
 
 # 0. variables & environment

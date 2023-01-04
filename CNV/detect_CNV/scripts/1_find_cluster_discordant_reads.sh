@@ -28,11 +28,11 @@ rm $workdir_pac
 
 ## 0.3. set local paths
 ### 0.3.1. input files
-in_bam_compressed=$sample\_$contig\.bam.genozip
-in_bam=$sample\_$contig\.bam
-in_sam=$sample\_$contig\.sam
+in_bam_compressed=$sample\_$contig\.bam.genozip # those unzipped files were moved to /staging afterwards
 
 ### 0.3.2. output & intermediate files
+in_bam=$sample\_$contig\.bam
+in_sam=$sample\_$contig\.sam
 out_everted_inserts=$sample\_$contig\_everted_inserts.txt
 out_distant_inserts=$sample\_$contig\_distant_inserts.txt
 out_everted_inserts_clustered=$sample\_$contig\_everted_inserts_clustered.txt
@@ -70,13 +70,14 @@ echo -e "### clustering of discordant read pairs for duplications ends at" `date
 }
 
 ## 3.2. for deletions
+## using python3 as python2 are no longer built-in at updated CHTC system (centOS8)
 find_cluster_del(){
 echo -e "### detection of discordant read pairs for deletions starts at" `date +%F'  '%H:%M` "\n" >> $log
-cat $in_sam | python $dir_poolDiffCNV/findDistantInserts.py $insert_size_cutoff > $out_distant_inserts # find discordant read pairs for deletions
+cat $in_sam | python3 $dir_poolDiffCNV/findDistantInserts.py $insert_size_cutoff > $out_distant_inserts # find discordant read pairs for deletions
 echo -e "### detection of discordant read pairs for deletions ends at" `date +%F'  '%H:%M` "\n" >> $log
 
 echo -e "### clustering of discordant read pairs for deletions starts at" `date +%F'  '%H:%M` "\n" >> $log
-cat $out_distant_inserts | python $dir_poolDiffCNV/clusterDistantInserts.py $insertSizeDiffCutoff $minNumSupportingInserts $minLenCutoff > $out_distant_inserts_clustered 2>>$log # For deletions: cluster discordant read pairs into candidate CNVs
+cat $out_distant_inserts | python3 $dir_poolDiffCNV/clusterDistantInserts.py $insertSizeDiffCutoff $minNumSupportingInserts $minLenCutoff > $out_distant_inserts_clustered 2>>$log # For deletions: cluster discordant read pairs into candidate CNVs
 echo -e "### clustering of discordant read pairs for deletions ends at" `date +%F'  '%H:%M` "\n" >> $log
 }
 

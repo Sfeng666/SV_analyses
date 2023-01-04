@@ -7,7 +7,7 @@ This program performs environment association analysis between environmental inf
 0. Core method: BayeScEnv;
 1. Prepare input files:
     * Environmental data: environmental information in the form of ‘environmental differentiation’, which is usually computed as a contrast to a reference (usually the average environment, but not obligatory), and as a distance. For each environmental variable, the input is one line that has each column as the distance of each sample (cautious about the order!).
-    * Genotype data: 
+    * Genotype data
 
 
 ## Notes
@@ -19,11 +19,7 @@ This program performs environment association analysis between environmental inf
 6. BayeScEnv only allow integer, so the effective pool size should be rounded (round half up) before input (because BayeScEnv will automatically round down).
 
 ## Questions
-1. How to narrow down SNPs for analysis:
-    * filter SNPs by AF or allele count - average AF across all samples (e.g. 5%)
-    * filter by global Fst at each SNP (local adaptation sites tend to have higher Fst)
-        * advantages: run faster; avoid multiple-test issues
-2. Which environment variables to include:
+1. Which environment variables to include:
     * Ratio of built area to vegetation (trees + crops)
     * Ratio of crop to trees
     * Altitude

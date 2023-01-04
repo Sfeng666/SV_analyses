@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 # script to prepare bam file of each contig across samples for discordant read-pair detection and clustering
 
 # 0. set up arguments and conda environment
